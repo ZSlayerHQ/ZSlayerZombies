@@ -1,0 +1,143 @@
+{
+  "enabled": true,
+  "debug": false,
+
+  "maps": {
+    "Labs": 100,
+    "Customs": 75,
+    "Factory": 100,
+    "Interchange": 50,
+    "Lighthouse": 50,
+    "Reserve": 60,
+    "GroundZero": 25,
+    "Shoreline": 50,
+    "Streets": 50,
+    "Woods": 60
+  },
+
+  "disableBosses": {
+    "Labs": true,
+    "Customs": false,
+    "Factory": false,
+    "Interchange": false,
+    "Lighthouse": false,
+    "Reserve": false,
+    "GroundZero": false,
+    "Shoreline": false,
+    "Streets": false,
+    "Woods": false
+  },
+
+  "zombieSettings": {
+    "replaceBotHostility": true,
+    "enableSummoning": true,
+    "removeLabsKeycard": true,
+    "disableNormalScavWaves": false,
+    "zombieMultiplier": 5,
+    "crowdsLimit": 2,
+    "maxCrowdAttackSpawnLimit": 13,
+    "crowdCooldownPerPlayerSec": 300,
+    "crowdAttackBlockRadius": 100,
+    "minSpawnDistToPlayer": 40,
+    "targetPointSearchRadiusLimit": 80,
+    "zombieCallDeltaRadius": 20,
+    "zombieCallPeriodSec": 1,
+    "zombieCallRadiusLimit": 50,
+    "infectedLookCoeff": 0.5,
+    "minInfectionPercentage": 0
+  },
+
+  "infectionEffects": {
+    "enabled": true,
+    "displayUI": true,
+    "zombieBleedMultiplier": 10,
+    "dehydrationRate": -0.84,
+    "hearingDebuffPercentage": 0.2
+  },
+
+  "spawnWeights": {
+    "infectedAssault": { "easy": 30, "normal": 110, "hard": 40 },
+    "infectedPmc": { "easy": 15, "normal": 55, "hard": 20 },
+    "infectedCivil": { "easy": 0, "normal": 0, "hard": 0 },
+    "infectedLaborant": { "easy": 0, "normal": 0, "hard": 0 },
+    "infectedTagilla": { "easy": 0, "normal": 0, "hard": 0 },
+    "cursedAssault": { "easy": 0, "normal": 0, "hard": 0 }
+  },
+
+  "bossZombies": {
+    "infectedTagilla": {
+      "enabled": false,
+      "spawnChance": 15,
+      "maps": ["factory4", "laboratory"],
+      "maxPerRaid": 1
+    },
+    "cursedAssault": {
+      "enabled": false,
+      "spawnChance": 10,
+      "maps": ["all"],
+      "maxPerRaid": 2
+    }
+  },
+
+  "nightMode": {
+    "enabled": false,
+    "nightInfectionMultiplier": 1.5,
+    "forceNightWeather": false,
+    "nightBossChanceMultiplier": 2.0
+  },
+
+  "raidSettings": {
+    "extendRaidTime": false,
+    "raidTimeMultiplier": 1.5,
+    "scavCooldownMultiplier": 1.0,
+    "scavsAffected": true,
+    "forceWeather": "none",
+    "forceSeason": "none"
+  },
+
+  "waveEscalation": {
+    "enabled": false,
+    "startInfectionPercent": 25,
+    "endInfectionPercent": 150,
+    "escalationCurve": "linear",
+    "hordeEventEnabled": false,
+    "hordeIntervalMinutes": 10,
+    "hordeMultiplier": 3.0
+  },
+
+  "lootModifiers": {
+    "enabled": false,
+    "globalLootMultiplier": 1.0,
+    "medicalLootMultiplier": 2.0,
+    "ammoLootMultiplier": 1.5,
+    "valuableLootMultiplier": 0.5,
+    "looseLootMultiplier": 1.0,
+    "containerLootMultiplier": 1.0
+  },
+
+  "rewards": {
+    "zombieKillXpMultiplier": 1.0,
+    "survivalBonusXp": 0,
+    "raidXpMultiplier": 1.0
+  },
+
+  "difficultyScaling": {
+    "enabled": false,
+    "scalingMode": "playerCount",
+    "playerCountInfectionScale": {
+      "1": 1.0,
+      "2": 1.25,
+      "3": 1.5,
+      "4": 1.75,
+      "5": 2.0
+    },
+    "levelScaling": {
+      "minLevel": 1,
+      "maxLevel": 60,
+      "minMultiplier": 0.5,
+      "maxMultiplier": 1.5
+    }
+  },
+
+  "advancedMaps": {}
+}
