@@ -639,6 +639,10 @@ public class ZombieService(
 
         // Log summary
         LogStartupSummary(config);
+
+        // Debug diagnostics — dump actual database state so we can verify what the bot generator sees
+        if (config.Debug)
+            LogSpawnDiagnostics(config);
     }
 
     // ── Step 1: Seasonal Event Config ──
@@ -1201,6 +1205,168 @@ public class ZombieService(
         logger.Info($"{yellow}╚{bar}╝{reset}");
 
         logger.Success("[ZSlayerZombies] The infection has spread... zombies are active!");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // DIAGNOSTICS
+    // ═══════════════════════════════════════════════════════
+
+    private void LogSpawnDiagnostics(ZombieConfig config)
+    {
+        const string cyan = "\x1b[96m";
+        const string yellow = "\x1b[93m";
+        const string green = "\x1b[92m";
+        const string red = "\x1b[91m";
+        const string dim = "\x1b[90m";
+        const string reset = "\x1b[0m";
+        const string white = "\x1b[97m";
+
+        logger.Info($"{cyan}┌──────────────────────────────────────────────────────┐{reset}");
+        logger.Info($"{cyan}│  ZOMBIE SPAWN DIAGNOSTICS                            │{reset}");
+        logger.Info($"{cyan}└──────────────────────────────────────────────────────┘{reset}");
+
+        // 1. Critical flags
+        var globals = databaseService.GetGlobals();
+        var botCore = databaseService.GetBots()?.Core;
+        var activeFlag = botCore?.ActiveHalloweenZombiesEvent ?? false;
+        var eventTypes = globals.Configuration?.EventType ?? [];
+
+        logger.Info($"{white}[Critical Flags]{reset}");
+        logger.Info($"  ActiveHalloweenZombiesEvent: {(activeFlag ? $"{green}TRUE" : $"{red}FALSE")}{reset}");
+        logger.Info($"  EventTypes: {(eventTypes.Count > 0 ? $"{green}[{string.Join(", ", eventTypes)}]" : $"{red}EMPTY")}{reset}");
+        logger.Info($"  Contains Halloween: {(eventTypes.Contains(EventType.Halloween) ? $"{green}YES" : $"{red}NO")}{reset}");
+        logger.Info($"  Contains HalloweenIllumination: {(eventTypes.Contains(EventType.HalloweenIllumination) ? $"{green}YES" : $"{red}NO")}{reset}");
+
+        // 2. Seasonal event config
+        var seasonalConfig = configServer.GetConfig<SeasonalEventConfig>();
+        var halloween = FindHalloweenEvent(seasonalConfig);
+        if (halloween != null)
+        {
+            logger.Info($"{white}[Seasonal Event]{reset}");
+            logger.Info($"  Enabled: {(halloween.Enabled ? $"{green}YES" : $"{red}NO")}{reset}");
+            logger.Info($"  Date range: {halloween.StartMonth}/{halloween.StartDay} — {halloween.EndMonth}/{halloween.EndDay}");
+            logger.Info($"  ZombieSettings.Enabled: {halloween.Settings?.ZombieSettings?.Enabled}");
+            logger.Info($"  ReplaceBotHostility: {halloween.Settings?.ReplaceBotHostility}");
+            logger.Info($"  EnableSummoning: {halloween.Settings?.EnableSummoning}");
+        }
+        else
+        {
+            logger.Warning($"  {red}Halloween seasonal event NOT FOUND in config!{reset}");
+        }
+
+        // 3. Per-location InfectionPercentage + crowd params
+        logger.Info($"{white}[Per-Location Spawn Config]{reset}");
+        foreach (var folder in LocationFolders)
+        {
+            var loc = databaseService.GetLocation(folder);
+            var h2024 = loc?.Base?.Events?.Halloween2024;
+            if (h2024 == null)
+            {
+                logger.Info($"  {dim}{folder}: no Halloween2024 event data{reset}");
+                continue;
+            }
+
+            var infPct = h2024.InfectionPercentage;
+            var pctColor = infPct switch { null or 0 => red, < 50 => yellow, _ => green };
+            var crowdCount = h2024.CrowdAttackSpawnParams != null ? h2024.CrowdAttackSpawnParams.Count() : 0;
+
+            logger.Info($"  {white}{folder,-20}{reset} Infection: {pctColor}{infPct ?? 0}%{reset}  ZombieMul: {h2024.ZombieMultiplier}  CrowdsLimit: {h2024.CrowdsLimit}  MaxCrowd: {h2024.MaxCrowdAttackSpawnLimit}  SpawnParams: {crowdCount}");
+        }
+
+        // 4. Spawn weights (CrowdAttackSpawnParams) — difficulty determines zombie mode:
+        //    easy = Slow (shamble), normal = Fast (sprint), hard = Shooting (ranged + melee)
+        var sampleFolder = "laboratory";
+        var sampleLoc = databaseService.GetLocation(sampleFolder);
+        var sampleH2024 = sampleLoc?.Base?.Events?.Halloween2024;
+        if (sampleH2024?.CrowdAttackSpawnParams != null)
+        {
+            logger.Info($"{white}[Spawn Weights — {sampleFolder}]{reset}");
+            logger.Info($"  {dim}Difficulty mapping: easy=Shamble, normal=Sprint, hard=Shooting{reset}");
+
+            var totalWeight = 0;
+            var typeWeights = new Dictionary<string, Dictionary<string, int>>();
+            foreach (var param in sampleH2024.CrowdAttackSpawnParams)
+            {
+                var w = param.Weight ?? 0;
+                var role = param.Role ?? "unknown";
+                var diff = param.Difficulty ?? "unknown";
+                totalWeight += w;
+
+                if (!typeWeights.ContainsKey(role))
+                    typeWeights[role] = new Dictionary<string, int>();
+                typeWeights[role][diff] = w;
+
+                var mode = diff switch { "easy" => "Shamble", "normal" => "Sprint", "hard" => "Shooting", _ => "?" };
+                var wColor = w > 0 ? green : dim;
+                logger.Info($"  {wColor}{role,-22} {diff,-8} → {mode,-10} weight={w}{reset}");
+            }
+
+            // Summary: percentage breakdown by type and mode
+            if (totalWeight > 0)
+            {
+                logger.Info($"  {white}── Spawn Distribution (total weight: {totalWeight}) ──{reset}");
+                foreach (var (role, diffs) in typeWeights)
+                {
+                    var roleTotal = diffs.Values.Sum();
+                    var rolePct = roleTotal * 100.0 / totalWeight;
+                    var shootPct = diffs.GetValueOrDefault("hard", 0) * 100.0 / totalWeight;
+                    var shootColor = shootPct > 10 ? yellow : dim;
+                    logger.Info($"  {white}{role,-22}{reset} {rolePct:F1}% of spawns  ({shootColor}{shootPct:F1}% will SHOOT{reset})");
+                }
+            }
+        }
+
+        // 5. Bot types — brain, AI values, health per difficulty
+        var bots = databaseService.GetBots();
+        var infectedTypes = new[] { "infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant", "infectedTagilla", "cursedAssault" };
+        logger.Info($"{white}[Infected Bot Types — Brain & Behavior]{reset}");
+        foreach (var typeName in infectedTypes)
+        {
+            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null)
+            {
+                logger.Info($"  {red}{typeName}: NOT IN DATABASE{reset}");
+                continue;
+            }
+
+            // Health summary
+            var bodyParts = botType.BotHealth?.BodyParts;
+            var healthStr = "N/A";
+            var firstBp = bodyParts?.FirstOrDefault();
+            if (firstBp != null)
+            {
+                healthStr = $"Head={firstBp.Head?.Min ?? 0}/{firstBp.Head?.Max ?? 0} Chest={firstBp.Chest?.Min ?? 0}/{firstBp.Chest?.Max ?? 0} Stomach={firstBp.Stomach?.Min ?? 0}/{firstBp.Stomach?.Max ?? 0}";
+            }
+
+            logger.Info($"  {green}{typeName}{reset}");
+            logger.Info($"    Health: {healthStr}");
+
+            // Per-difficulty AI values
+            foreach (var (diffName, diff) in botType.BotDifficulty)
+            {
+                var sight = diff.Core?.VisibleDistance;
+                var fov = diff.Core?.VisibleAngle;
+                var hearing = diff.Core?.HearingSense;
+                var scatter = diff.Core?.ScatteringPerMeter;
+                var hearChance = diff.Hearing?.ChanceToHearSimpleSound01;
+                var rotSpeed = diff.Move?.BaseRotateSpeed;
+
+                logger.Info($"    {yellow}[{diffName}]{reset} Sight={sight} FOV={fov} Hearing={hearing} HearChance={hearChance} Scatter={scatter} Rotate={rotSpeed}");
+            }
+        }
+
+        // 6. Bot config caps
+        var botConfig = configServer.GetConfig<BotConfig>();
+        logger.Info($"{white}[Bot Caps (BotConfig.MaxBotCap)]{reset}");
+        foreach (var (key, cap) in botConfig.MaxBotCap.OrderBy(kv => kv.Key))
+        {
+            logger.Info($"  {key,-20} {cap}");
+        }
+
+        // 7. ABPS detection
+        logger.Info($"{white}[Mod Detection]{reset}");
+        logger.Info($"  ABPS installed: {(IsAbpsInstalled() ? $"{yellow}YES — bot caps managed by ABPS" : $"{dim}NO")}{reset}");
+
+        logger.Info($"{cyan}──────────────────────────────────────────────────────{reset}");
     }
 
     // ═══════════════════════════════════════════════════════
