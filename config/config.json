@@ -139,5 +139,45 @@
     }
   },
 
+  "zombieAI": {
+    "enabled": true,
+    "sightRange": { "easy": 110, "normal": 120, "hard": 130 },
+    "fieldOfView": { "easy": 130, "normal": 130, "hard": 140 },
+    "hearingSensitivity": { "easy": 1.05, "normal": 1.85, "hard": 2.85 },
+    "hearingChance": { "easy": 0.45, "normal": 0.65, "hard": 0.7 },
+    "aggressionChance": { "easy": 40, "normal": 40, "hard": 40 },
+    "rotateSpeed": 270,
+    "reactionTime": { "easy": 1.0, "normal": 0.75, "hard": 0.5 },
+    "scatteringPerMeter": { "easy": 0.12, "normal": 0.1, "hard": 0.08 },
+    "affectedTypes": ["infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant"]
+  },
+
+  "zombieHealth": {
+    "enabled": true,
+    "standard": { "head": 10, "chest": 180, "stomach": 170, "arms": 70, "legs": 70 },
+    "tagilla": { "head": 130, "chest": 450, "stomach": 350, "arms": 150, "legs": 150 },
+    "cursedAssault": { "head": 35, "chest": 200, "stomach": 150, "arms": 60, "legs": 60 },
+    "standardTypes": ["infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant"]
+  },
+
+  "spawnControl": {
+    "overrideBotCaps": false,
+    "maxBotCap": {
+      "Labs": 25, "Customs": 30, "Factory": 15, "Interchange": 28,
+      "Lighthouse": 27, "Reserve": 27, "GroundZero": 15,
+      "Shoreline": 29, "Streets": 28, "Woods": 27
+    },
+    "maxBotsPerZone": 6,
+    "ignoreMaxBots": true,
+    "forceSpawn": true,
+    "injectBossZombies": true,
+    "enableExtraWaves": false,
+    "extraWavesPerMap": 4,
+    "zombiesPerWave": 3,
+    "waveSpawnChance": 100,
+    "waveDifficulty": "normal",
+    "mapWaveOverrides": {}
+  },
+
   "advancedMaps": {}
 }

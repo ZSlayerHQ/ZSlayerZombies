@@ -68,6 +68,15 @@ public class ZombieConfig
     [JsonPropertyName("difficultyScaling")]
     public DifficultyScalingConfig DifficultyScaling { get; set; } = new();
 
+    [JsonPropertyName("zombieAI")]
+    public ZombieAIConfig ZombieAI { get; set; } = new();
+
+    [JsonPropertyName("zombieHealth")]
+    public ZombieHealthConfig ZombieHealth { get; set; } = new();
+
+    [JsonPropertyName("spawnControl")]
+    public SpawnControlConfig SpawnControl { get; set; } = new();
+
     [JsonPropertyName("advancedMaps")]
     public Dictionary<string, AdvancedMapOverride> AdvancedMaps { get; set; } = new();
 }
@@ -229,6 +238,132 @@ public class LevelScalingConfig
     [JsonPropertyName("maxLevel")] public int MaxLevel { get; set; } = 60;
     [JsonPropertyName("minMultiplier")] public double MinMultiplier { get; set; } = 0.5;
     [JsonPropertyName("maxMultiplier")] public double MaxMultiplier { get; set; } = 1.5;
+}
+
+// ═══════════════════════════════════════════════════════
+// ZOMBIE AI — per-difficulty behavior overrides
+// ═══════════════════════════════════════════════════════
+
+/// <summary>Value that scales per difficulty tier (easy/normal/hard).</summary>
+public class DifficultyFloat
+{
+    [JsonPropertyName("easy")] public float Easy { get; set; }
+    [JsonPropertyName("normal")] public float Normal { get; set; }
+    [JsonPropertyName("hard")] public float Hard { get; set; }
+
+    public float Get(string difficulty) => difficulty switch
+    {
+        "easy" => Easy, "normal" => Normal, "hard" => Hard,
+        "impossible" => Hard, // impossible uses hard values
+        _ => Normal
+    };
+}
+
+public class ZombieAIConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
+
+    // Vision
+    [JsonPropertyName("sightRange")] public DifficultyFloat SightRange { get; set; } = new() { Easy = 110, Normal = 120, Hard = 130 };
+    [JsonPropertyName("fieldOfView")] public DifficultyFloat FieldOfView { get; set; } = new() { Easy = 130, Normal = 130, Hard = 140 };
+
+    // Hearing
+    [JsonPropertyName("hearingSensitivity")] public DifficultyFloat HearingSensitivity { get; set; } = new() { Easy = 1.05f, Normal = 1.85f, Hard = 2.85f };
+    [JsonPropertyName("hearingChance")] public DifficultyFloat HearingChance { get; set; } = new() { Easy = 0.45f, Normal = 0.65f, Hard = 0.7f };
+
+    // Aggression — % chance to attack immediately on sight (0-100)
+    [JsonPropertyName("aggressionChance")] public DifficultyFloat AggressionChance { get; set; } = new() { Easy = 40, Normal = 40, Hard = 40 };
+
+    // Movement — rotation speed (higher = faster turning)
+    [JsonPropertyName("rotateSpeed")] public float RotateSpeed { get; set; } = 270;
+
+    // Reaction time — seconds delay before engaging on first contact
+    [JsonPropertyName("reactionTime")] public DifficultyFloat ReactionTime { get; set; } = new() { Easy = 1.0f, Normal = 0.75f, Hard = 0.5f };
+
+    // Scattering — shot accuracy (higher = more scatter = worse aim)
+    [JsonPropertyName("scatteringPerMeter")] public DifficultyFloat ScatteringPerMeter { get; set; } = new() { Easy = 0.12f, Normal = 0.1f, Hard = 0.08f };
+
+    // Which bot types these AI settings affect
+    [JsonPropertyName("affectedTypes")] public List<string> AffectedTypes { get; set; } =
+        ["infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant"];
+}
+
+// ═══════════════════════════════════════════════════════
+// ZOMBIE HEALTH — per-type body part HP
+// ═══════════════════════════════════════════════════════
+
+public class BodyPartHealthConfig
+{
+    [JsonPropertyName("head")] public double Head { get; set; }
+    [JsonPropertyName("chest")] public double Chest { get; set; }
+    [JsonPropertyName("stomach")] public double Stomach { get; set; }
+    [JsonPropertyName("arms")] public double Arms { get; set; }
+    [JsonPropertyName("legs")] public double Legs { get; set; }
+}
+
+public class ZombieHealthConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
+
+    // Standard zombies (infectedAssault, infectedPmc, infectedCivil, infectedLaborant)
+    [JsonPropertyName("standard")] public BodyPartHealthConfig Standard { get; set; } =
+        new() { Head = 10, Chest = 180, Stomach = 170, Arms = 70, Legs = 70 };
+
+    // Boss zombie (infectedTagilla) — much tankier
+    [JsonPropertyName("tagilla")] public BodyPartHealthConfig Tagilla { get; set; } =
+        new() { Head = 130, Chest = 450, Stomach = 350, Arms = 150, Legs = 150 };
+
+    // Cursed assault — fast aggressive variant
+    [JsonPropertyName("cursedAssault")] public BodyPartHealthConfig CursedAssault { get; set; } =
+        new() { Head = 35, Chest = 200, Stomach = 150, Arms = 60, Legs = 60 };
+
+    // Which types use "standard" health (others get their own)
+    [JsonPropertyName("standardTypes")] public List<string> StandardTypes { get; set; } =
+        ["infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant"];
+}
+
+// ═══════════════════════════════════════════════════════
+// SPAWN CONTROL — independent zombie spawning
+// ═══════════════════════════════════════════════════════
+
+public class SpawnControlConfig
+{
+    // --- Bot Cap Overrides ---
+    [JsonPropertyName("overrideBotCaps")] public bool OverrideBotCaps { get; set; }
+    [JsonPropertyName("maxBotCap")] public Dictionary<string, int> MaxBotCap { get; set; } = new()
+    {
+        ["Labs"] = 25, ["Customs"] = 30, ["Factory"] = 15, ["Interchange"] = 28,
+        ["Lighthouse"] = 27, ["Reserve"] = 27, ["GroundZero"] = 15,
+        ["Shoreline"] = 29, ["Streets"] = 28, ["Woods"] = 27
+    };
+    [JsonPropertyName("maxBotsPerZone")] public int MaxBotsPerZone { get; set; } = 6;
+
+    // --- Zombie Wave Behavior ---
+    [JsonPropertyName("ignoreMaxBots")] public bool IgnoreMaxBots { get; set; } = true;
+    [JsonPropertyName("forceSpawn")] public bool ForceSpawn { get; set; } = true;
+
+    // --- Boss Zombie Injection ---
+    // Injects infectedTagilla/cursedAssault into CrowdAttackSpawnParams on configured maps
+    [JsonPropertyName("injectBossZombies")] public bool InjectBossZombies { get; set; } = true;
+
+    // --- Independent Zombie Waves ---
+    // Adds extra BossLocationSpawn entries for zombie-only waves (not tied to scav conversion)
+    [JsonPropertyName("enableExtraWaves")] public bool EnableExtraWaves { get; set; }
+    [JsonPropertyName("extraWavesPerMap")] public int ExtraWavesPerMap { get; set; } = 4;
+    [JsonPropertyName("zombiesPerWave")] public int ZombiesPerWave { get; set; } = 3;
+    [JsonPropertyName("waveSpawnChance")] public int WaveSpawnChance { get; set; } = 100;
+    [JsonPropertyName("waveDifficulty")] public string WaveDifficulty { get; set; } = "normal";
+
+    // --- Per-map wave overrides ---
+    [JsonPropertyName("mapWaveOverrides")] public Dictionary<string, MapWaveOverride> MapWaveOverrides { get; set; } = new();
+}
+
+public class MapWaveOverride
+{
+    [JsonPropertyName("extraWaves")] public int? ExtraWaves { get; set; }
+    [JsonPropertyName("zombiesPerWave")] public int? ZombiesPerWave { get; set; }
+    [JsonPropertyName("waveSpawnChance")] public int? WaveSpawnChance { get; set; }
+    [JsonPropertyName("maxBotsPerZone")] public int? MaxBotsPerZone { get; set; }
 }
 
 public class AdvancedMapOverride
