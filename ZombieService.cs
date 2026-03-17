@@ -157,6 +157,11 @@ public class ZombieService(
     // Per-location original CrowdAttackSpawnParams count (for boss zombie injection cleanup)
     private readonly Dictionary<string, int> _origCrowdParamCount = new();
 
+    // Bot core zombie event flag + per-location InfectionPercentage
+    private bool _origActiveHalloweenZombiesEvent;
+    private readonly Dictionary<string, double?> _origInfectionPercentage = new();
+    private List<EventType>? _origEventTypes;
+
     // ═══════════════════════════════════════════════════════
     // PUBLIC API
     // ═══════════════════════════════════════════════════════
@@ -255,6 +260,21 @@ public class ZombieService(
 
         // SavagePlayCooldown: int
         _origSavagePlayCooldown = globals.Configuration?.SavagePlayCooldown ?? 0;
+
+        // EventType list
+        _origEventTypes = globals.Configuration?.EventType?.ToList();
+
+        // Bot core ActiveHalloweenZombiesEvent flag
+        _origActiveHalloweenZombiesEvent = databaseService.GetBots()?.Core?.ActiveHalloweenZombiesEvent ?? false;
+
+        // Per-location InfectionPercentage
+        _origInfectionPercentage.Clear();
+        foreach (var folder in LocationFolders)
+        {
+            var loc = databaseService.GetLocation(folder);
+            var h2024 = loc?.Base?.Events?.Halloween2024;
+            _origInfectionPercentage[folder] = h2024?.InfectionPercentage;
+        }
 
         // Location Halloween2024 events — snapshot crowd params per location
         SnapshotLocationEvents();
@@ -439,12 +459,29 @@ public class ZombieService(
             ih.ZombieBleedMul = _origZombieBleedMul;
         }
 
+        // EventType list
+        if (_origEventTypes != null && globals.Configuration != null)
+            globals.Configuration.EventType = _origEventTypes.ToList();
+
         // ZombieInfection effect
         var zi = globals.Configuration?.Health?.Effects?.ZombieInfection;
         if (zi != null)
         {
             zi.Dehydration = _origDehydration;
             zi.HearingDebuffPercentage = _origHearingDebuff;
+        }
+
+        // Bot core ActiveHalloweenZombiesEvent
+        var botCore = databaseService.GetBots()?.Core;
+        if (botCore != null)
+            botCore.ActiveHalloweenZombiesEvent = _origActiveHalloweenZombiesEvent;
+
+        // Per-location InfectionPercentage
+        foreach (var (folder, origVal) in _origInfectionPercentage)
+        {
+            var loc = databaseService.GetLocation(folder);
+            var h2024 = loc?.Base?.Events?.Halloween2024;
+            if (h2024 != null) h2024.InfectionPercentage = origVal;
         }
 
         // SavagePlayCooldown: int
@@ -700,11 +737,40 @@ public class ZombieService(
     {
         var globals = databaseService.GetGlobals();
 
+        // CRITICAL: Tell SPT's bot generator that the zombie event is active
+        var botCore = databaseService.GetBots()?.Core;
+        if (botCore != null)
+            botCore.ActiveHalloweenZombiesEvent = true;
+
+        // CRITICAL: Add Halloween EventType so the client enables zombie behavior
+        if (globals.Configuration?.EventType != null)
+        {
+            if (!globals.Configuration.EventType.Contains(EventType.Halloween))
+                globals.Configuration.EventType.Add(EventType.Halloween);
+            if (!globals.Configuration.EventType.Contains(EventType.HalloweenIllumination))
+                globals.Configuration.EventType.Add(EventType.HalloweenIllumination);
+            globals.Configuration.EventType.Remove(EventType.None);
+        }
+
         // LocationInfection — visual display on map select screen (Dictionary<string, int>)
         if (globals.LocationInfection != null)
         {
             foreach (var (friendlyName, key) in LocationInfectionKeys)
                 globals.LocationInfection[key] = config.Maps.GetInfection(friendlyName);
+        }
+
+        // CRITICAL: Set InfectionPercentage on each location's Halloween2024 event
+        // This is what SPT's bot generator reads to determine infected spawn ratio
+        foreach (var (friendlyName, keys) in InfectionKeys)
+        {
+            var infection = (double)config.Maps.GetInfection(friendlyName);
+            foreach (var key in keys)
+            {
+                var loc = databaseService.GetLocation(key);
+                var h2024 = loc?.Base?.Events?.Halloween2024;
+                if (h2024 != null)
+                    h2024.InfectionPercentage = infection;
+            }
         }
 
         // SeasonActivity.InfectionHalloween — client-side UI + bleed multiplier
