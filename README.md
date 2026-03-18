@@ -23,11 +23,15 @@ ZSlayer Zombies forces the Halloween zombie event active year-round and takes ov
 
 1. **Activates zombie spawning** — Sets `ActiveHalloweenZombiesEvent`, injects `EventType.Halloween` into globals, and writes `InfectionPercentage` on every location's `Halloween2024` event data. These are the three critical flags SPT's bot generator checks before spawning infected types.
 
-2. **Per-map infection rates** — Each map gets its own infection percentage (0-100%). Labs at 100% is a pure zombie map. Woods at 60% keeps you guessing. Ground Zero at 25% adds occasional tension without overwhelming new players.
+2. **Injects zombie BossLocationSpawn entries** — SPT's `SeasonalEventService.ConfigureZombies()` only runs when the Halloween event passes date validation (Oct 28 - Nov 9). Outside that window, the ~28 zombie `BossLocationSpawn` entries per map (with `TriggerName: "botEvent"`) are never added, and no zombies spawn. This mod reads the spawn data directly from `seasonalevents.json` and injects it into every infected map's `BossLocationSpawn` array, making zombie spawning work year-round regardless of system date.
 
-3. **Snapshot-and-restore pattern** — Every database value the mod touches is snapshotted on first load. Before every apply cycle, all values are restored from snapshots, then fresh values are written. This prevents compounding errors (multiplying already-modified values) and allows clean reset to vanilla at any time.
+3. **Applies zombie hostility settings** — SPT's `ReplaceBotHostility("zombies")` is also date-gated. This mod reads the hostility rules from `seasonalevents.json` and applies them to all infected maps, ensuring zombies are hostile to all players and bots.
 
-4. **Live HTTP API** — All settings are adjustable at runtime via REST endpoints. No server restart needed.
+4. **Per-map infection rates** — Each map gets its own infection percentage (0-100%). Labs at 100% is a pure zombie map. Woods at 60% keeps you guessing. Ground Zero at 25% adds occasional tension without overwhelming new players.
+
+5. **Snapshot-and-restore pattern** — Every database value the mod touches is snapshotted on first load. Before every apply cycle, all values are restored from snapshots, then fresh values are written. This prevents compounding errors (multiplying already-modified values) and allows clean reset to vanilla at any time.
+
+6. **Live HTTP API** — All settings are adjustable at runtime via REST endpoints. No server restart needed.
 
 ---
 
@@ -374,16 +378,17 @@ ZSlayerZombies/
 
 ### Apply Pipeline
 
-`ZombieService.Apply()` runs an 8-step pipeline on every config change:
+`ZombieService.Apply()` runs a 9-step pipeline on every config change:
 
-1. **Seasonal Event** — Force-enable Halloween event, set infection amounts per map
+1. **Seasonal Event** — Force-enable Halloween event year-round (Jan 1 - Dec 31), set infection amounts per map
 2. **Globals** — Set `ActiveHalloweenZombiesEvent`, inject `EventType.Halloween`, write `InfectionPercentage` per location, configure infection effects
-3. **Location Events** — Write crowd attack params (multiplier, limits, cooldowns, spawn weights) per location
-4. **Raid Settings** — Raid time extension, scav cooldown multiplier
-5. **Loot Modifiers** — Per-map global loot chance modifier
-6. **Zombie AI** — Per-type, per-difficulty vision/hearing/movement/scatter overrides
-7. **Zombie Health** — Per-type body part HP values
-8. **Spawn Control** — Bot cap overrides, boss zombie injection, extra wave spawning
+3. **Zombie Spawn Injection** — Read zombie `BossLocationSpawn` entries from `seasonalevents.json` `eventBossSpawns.halloweenzombies` and inject into each infected map (~28 entries per map). Also apply zombie hostility rules from `hostilitySettingsForEvent.zombies` to make zombies hostile to all bots and vice versa. This replicates what SPT's `SeasonalEventService.ConfigureZombies()` does, but without requiring the Halloween event to pass date validation.
+4. **Location Events** — Write crowd attack params (multiplier, limits, cooldowns, spawn weights) per location
+5. **Raid Settings** — Raid time extension, scav cooldown multiplier
+6. **Loot Modifiers** — Per-map global loot chance modifier
+7. **Zombie AI** — Per-type, per-difficulty vision/hearing/movement/scatter overrides
+8. **Zombie Health** — Per-type body part HP values
+9. **Spawn Control** — Bot cap overrides, boss zombie injection, extra wave spawning
 
 Every step follows the snapshot-and-restore pattern: restore original values from snapshot, then write fresh values from config. This guarantees idempotent applies — calling apply 100 times produces the same result as calling it once.
 

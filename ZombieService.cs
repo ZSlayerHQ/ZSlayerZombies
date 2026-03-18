@@ -1200,6 +1200,10 @@ public class ZombieService(
         // 8c: Add extra zombie-only BossLocationSpawn waves
         if (sc.EnableExtraWaves)
             InjectExtraZombieWaves(config);
+
+        // 8d: Per-category bot limits (overrides MaxBotCap and MaxCrowdAttackSpawnLimit)
+        if (config.BotLimits.Enabled)
+            ApplyBotLimits(config);
     }
 
     private void InjectBossZombieCrowdParams(ZombieConfig config)
@@ -1296,6 +1300,61 @@ public class ZombieService(
             logger.Info($"[ZSlayerZombies] Extra zombie waves: {sc.ExtraWavesPerMap} per map, {sc.ZombiesPerWave} per wave");
     }
 
+    // ── Step 8d: Per-category bot limits ──
+
+    private void ApplyBotLimits(ZombieConfig config)
+    {
+        var limits = config.BotLimits;
+        var nonZombieCap = limits.MaxPmcs + limits.MaxScavs + limits.MaxBosses;
+
+        // Skip if ABPS is managing bot caps
+        if (IsAbpsInstalled())
+        {
+            logger.Info("[ZSlayerZombies] Bot limits: ABPS detected — only applying zombie limits (MaxCrowdAttackSpawnLimit), skipping MaxBotCap override");
+        }
+        else
+        {
+            // Set MaxBotCap = PMC + Scav + Boss total (per map)
+            var botConfig = configServer.GetConfig<BotConfig>();
+            foreach (var key in botConfig.MaxBotCap.Keys.ToList())
+            {
+                botConfig.MaxBotCap[key] = nonZombieCap;
+            }
+
+            if (config.Debug)
+                logger.Info($"[ZSlayerZombies] Bot limits: MaxBotCap set to {nonZombieCap} (PMC={limits.MaxPmcs} + Scav={limits.MaxScavs} + Boss={limits.MaxBosses})");
+        }
+
+        // Set MaxCrowdAttackSpawnLimit = maxZombies on all infected locations
+        foreach (var folder in LocationFolders)
+        {
+            var loc = databaseService.GetLocation(folder);
+            var h2024 = loc?.Base?.Events?.Halloween2024;
+            if (h2024 == null) continue;
+
+            h2024.MaxCrowdAttackSpawnLimit = limits.MaxZombies;
+        }
+
+        // Set IgnoreMaxBots on zombie wave BossLocationSpawn entries
+        foreach (var folder in LocationFolders)
+        {
+            var loc = databaseService.GetLocation(folder);
+            if (loc?.Base?.BossLocationSpawn == null) continue;
+
+            foreach (var spawn in loc.Base.BossLocationSpawn)
+            {
+                // Only modify zombie wave entries (TriggerName "botEvent" + zombie BossName)
+                if (spawn.TriggerName != "botEvent") continue;
+                var bossName = spawn.BossName?.ToLowerInvariant() ?? "";
+                if (!bossName.Contains("infected") && !bossName.Contains("cursed")) continue;
+
+                spawn.IgnoreMaxBots = limits.ZombiesIgnoreMaxBots;
+            }
+        }
+
+        logger.Info($"[ZSlayerZombies] Bot limits applied: PMC={limits.MaxPmcs} Scav={limits.MaxScavs} Boss={limits.MaxBosses} | Zombies={limits.MaxZombies} (ignoreMaxBots={limits.ZombiesIgnoreMaxBots})");
+    }
+
     // ═══════════════════════════════════════════════════════
     // HELPERS
     // ═══════════════════════════════════════════════════════
@@ -1352,6 +1411,7 @@ public class ZombieService(
         if (config.SpawnControl.InjectBossZombies) features.Add("Boss Zombies");
         if (config.SpawnControl.EnableExtraWaves) features.Add("Extra Waves");
         if (config.SpawnControl.OverrideBotCaps) features.Add("Bot Caps");
+        if (config.BotLimits.Enabled) features.Add($"Limits P{config.BotLimits.MaxPmcs}/S{config.BotLimits.MaxScavs}/B{config.BotLimits.MaxBosses}/Z{config.BotLimits.MaxZombies}");
         if (config.NightMode.Enabled) features.Add("Night Mode");
         if (config.LootModifiers.Enabled) features.Add("Loot Mods");
         if (config.WaveEscalation.Enabled) features.Add("Escalation");

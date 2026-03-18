@@ -77,6 +77,9 @@ public class ZombieConfig
     [JsonPropertyName("spawnControl")]
     public SpawnControlConfig SpawnControl { get; set; } = new();
 
+    [JsonPropertyName("botLimits")]
+    public BotLimitsConfig BotLimits { get; set; } = new();
+
     [JsonPropertyName("advancedMaps")]
     public Dictionary<string, AdvancedMapOverride> AdvancedMaps { get; set; } = new();
 }
@@ -364,6 +367,39 @@ public class MapWaveOverride
     [JsonPropertyName("zombiesPerWave")] public int? ZombiesPerWave { get; set; }
     [JsonPropertyName("waveSpawnChance")] public int? WaveSpawnChance { get; set; }
     [JsonPropertyName("maxBotsPerZone")] public int? MaxBotsPerZone { get; set; }
+}
+
+// ═══════════════════════════════════════════════════════
+// BOT LIMITS — per-category bot caps
+// ═══════════════════════════════════════════════════════
+
+/// <summary>
+/// Separate bot limits for different categories.
+/// PMC + Scav + Boss limits set the total MaxBotCap (shared pool).
+/// Zombie limit is enforced independently via MaxCrowdAttackSpawnLimit.
+/// </summary>
+public class BotLimitsConfig
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+
+    /// <summary>Max PMC bots alive at once. Combined with scavs+bosses for total non-zombie cap.</summary>
+    [JsonPropertyName("maxPmcs")] public int MaxPmcs { get; set; } = 10;
+
+    /// <summary>Max scav bots alive at once. Combined with pmcs+bosses for total non-zombie cap.</summary>
+    [JsonPropertyName("maxScavs")] public int MaxScavs { get; set; } = 12;
+
+    /// <summary>Max boss bots alive at once. Combined with pmcs+scavs for total non-zombie cap.</summary>
+    [JsonPropertyName("maxBosses")] public int MaxBosses { get; set; } = 3;
+
+    /// <summary>Max zombie bots alive at once. Enforced separately via MaxCrowdAttackSpawnLimit.</summary>
+    [JsonPropertyName("maxZombies")] public int MaxZombies { get; set; } = 20;
+
+    /// <summary>
+    /// When true, zombie waves bypass the total bot cap (IgnoreMaxBots=true).
+    /// This means zombies don't count against the PMC/Scav/Boss pool.
+    /// When false, zombies share the total cap with other bots.
+    /// </summary>
+    [JsonPropertyName("zombiesIgnoreMaxBots")] public bool ZombiesIgnoreMaxBots { get; set; } = true;
 }
 
 public class AdvancedMapOverride
