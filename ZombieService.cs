@@ -21,6 +21,25 @@ public class ZombieService(
     // MOD DETECTION — avoid conflicts with other bot mods
     // ═══════════════════════════════════════════════════════
 
+    // ═══════════════════════════════════════════════════════
+    // BOT TYPE LOOKUP — SPT uses lowercase filenames as keys
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// SPT loads bot type JSON files using lowercase filenames as dictionary keys
+    /// (e.g. "infectedassault" not "infectedAssault"). This helper normalizes lookups.
+    /// </summary>
+    private static bool TryGetBotType(Dictionary<string, BotType?> types, string name, out BotType? botType)
+    {
+        // Try exact match first, then lowercase
+        if (types.TryGetValue(name, out botType) && botType != null)
+            return true;
+        if (types.TryGetValue(name.ToLowerInvariant(), out botType) && botType != null)
+            return true;
+        botType = null;
+        return false;
+    }
+
     private bool? _abpsDetected;
 
     /// <summary>Detect if acidphantasm-botplacementsystem is installed (manages bot caps).</summary>
@@ -331,7 +350,7 @@ public class ZombieService(
 
         foreach (var typeName in zombieTypes)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null) continue;
+            if (!TryGetBotType(bots.Types, typeName, out var botType)) continue;
 
             // Snapshot AI difficulty values
             _origBotAI[typeName] = new Dictionary<string, AISnapshot>();
@@ -527,7 +546,7 @@ public class ZombieService(
         // Restore AI difficulty values
         foreach (var (typeName, diffs) in _origBotAI)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null) continue;
+            if (!TryGetBotType(bots.Types, typeName, out var botType)) continue;
             foreach (var (diffName, snap) in diffs)
             {
                 if (!botType.BotDifficulty.TryGetValue(diffName, out var diff)) continue;
@@ -548,7 +567,7 @@ public class ZombieService(
         // Restore health
         foreach (var (typeName, snap) in _origBotHealth)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null) continue;
+            if (!TryGetBotType(bots.Types, typeName, out var botType)) continue;
             var bp = botType.BotHealth?.BodyParts?.FirstOrDefault();
             if (bp == null) continue;
 
@@ -925,7 +944,7 @@ public class ZombieService(
 
         foreach (var typeName in ai.AffectedTypes)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null) continue;
+            if (!TryGetBotType(bots.Types, typeName, out var botType)) continue;
 
             foreach (var (diffName, diff) in botType.BotDifficulty)
             {
@@ -964,17 +983,17 @@ public class ZombieService(
         // Standard zombie types
         foreach (var typeName in health.StandardTypes)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null) continue;
+            if (!TryGetBotType(bots.Types, typeName, out var botType)) continue;
             ApplyHealthToBot(botType, health.Standard);
         }
 
         // Tagilla
-        if (bots.Types.TryGetValue("infectedTagilla", out var tagilla) && tagilla != null)
-            ApplyHealthToBot(tagilla, health.Tagilla);
+        if (TryGetBotType(bots.Types, "infectedTagilla", out var tagilla))
+            ApplyHealthToBot(tagilla!, health.Tagilla);
 
         // Cursed assault
-        if (bots.Types.TryGetValue("cursedAssault", out var cursed) && cursed != null)
-            ApplyHealthToBot(cursed, health.CursedAssault);
+        if (TryGetBotType(bots.Types, "cursedAssault", out var cursed))
+            ApplyHealthToBot(cursed!, health.CursedAssault);
 
         if (config.Debug)
             logger.Info($"[ZSlayerZombies] Zombie health configured (standard: {health.Standard.Head}/{health.Standard.Chest} HP)");
@@ -1318,13 +1337,22 @@ public class ZombieService(
 
         // 5. Bot types — brain, AI values, health per difficulty
         var bots = databaseService.GetBots();
+
+        // Dump actual keys so we can see what SPT uses (case sensitivity check)
+        var allKeys = bots.Types.Keys.Where(k => k.Contains("infect", StringComparison.OrdinalIgnoreCase) || k.Contains("cursed", StringComparison.OrdinalIgnoreCase)).ToList();
+        logger.Info($"{white}[Bot Type Keys containing 'infect'/'cursed']{reset}");
+        if (allKeys.Count > 0)
+            logger.Info($"  {green}{string.Join(", ", allKeys)}{reset}");
+        else
+            logger.Info($"  {red}NONE — no infected bot types loaded in bots.Types dictionary{reset}");
+
         var infectedTypes = new[] { "infectedAssault", "infectedPmc", "infectedCivil", "infectedLaborant", "infectedTagilla", "cursedAssault" };
         logger.Info($"{white}[Infected Bot Types — Brain & Behavior]{reset}");
         foreach (var typeName in infectedTypes)
         {
-            if (!bots.Types.TryGetValue(typeName, out var botType) || botType == null)
+            if (!TryGetBotType(bots.Types, typeName, out var botType))
             {
-                logger.Info($"  {red}{typeName}: NOT IN DATABASE{reset}");
+                logger.Info($"  {red}{typeName}: NOT IN DATABASE (tried '{typeName}' and '{typeName.ToLowerInvariant()}'){reset}");
                 continue;
             }
 
