@@ -638,6 +638,10 @@ public class ZombieService(
         // Step 2: Globals — visual infection & effects
         ApplyGlobals(config);
 
+        // Step 2.5: Inject zombie BossLocationSpawn entries from SPT's seasonal config
+        // SPT only does this when the Halloween event is date-active — we force it year-round
+        InjectZombieBossSpawns(config);
+
         // Step 3: Location events — crowd attack params
         ApplyLocationEvents(config);
 
@@ -815,6 +819,140 @@ public class ZombieService(
 
         if (config.Debug)
             logger.Info("[ZSlayerZombies] Globals configured (LocationInfection, InfectionHalloween, ZombieInfection effect)");
+    }
+
+    // ── Step 2.5: Inject zombie BossLocationSpawn entries ──
+
+    /// <summary>
+    /// SPT's SeasonalEventService.ConfigureZombies() calls AddEventBossesToMaps("halloweenzombies")
+    /// to inject zombie BossLocationSpawn entries from seasonalevents.json into each map.
+    /// This only happens when the Halloween event is date-active (Oct 28 - Nov 9).
+    /// We replicate it here so zombies spawn year-round regardless of date.
+    /// </summary>
+    private void InjectZombieBossSpawns(ZombieConfig config)
+    {
+        var seasonalConfig = configServer.GetConfig<SeasonalEventConfig>();
+
+        if (!seasonalConfig.EventBossSpawns.TryGetValue("halloweenzombies", out var zombieSpawns))
+        {
+            logger.Warning("[ZSlayerZombies] No 'halloweenzombies' entry in seasonalevents.json EventBossSpawns — zombie spawns cannot be injected!");
+            return;
+        }
+
+        var injectedCount = 0;
+
+        foreach (var folder in LocationFolders)
+        {
+            // Only inject for maps with infection > 0
+            var friendly = FolderToFriendly.GetValueOrDefault(folder, "");
+            if (string.IsNullOrEmpty(friendly)) continue;
+
+            var infection = config.Maps.GetInfection(friendly);
+            if (infection <= 0) continue;
+
+            if (!zombieSpawns.TryGetValue(folder, out var spawnEntries) || spawnEntries.Count == 0)
+                continue;
+
+            var loc = databaseService.GetLocation(folder);
+            var bossSpawns = loc?.Base?.BossLocationSpawn;
+            if (bossSpawns == null) continue;
+
+            var spawnList = bossSpawns.ToList();
+
+            foreach (var entry in spawnEntries)
+            {
+                // SPT's logic: only add if no existing non-botEvent entry with same BossName
+                if (spawnList.All(existing => existing.TriggerName == "botEvent" || existing.BossName != entry.BossName))
+                {
+                    spawnList.Add(entry);
+                    injectedCount++;
+                }
+            }
+
+            loc!.Base.BossLocationSpawn = spawnList;
+        }
+
+        if (config.Debug)
+            logger.Info($"[ZSlayerZombies] Injected {injectedCount} zombie BossLocationSpawn entries from seasonalevents.json");
+
+        // Also inject zombie hostility settings (makes zombies hostile to all bots and vice versa)
+        if (config.ZombieSettings.ReplaceBotHostility)
+            InjectZombieHostility(config, seasonalConfig);
+    }
+
+    /// <summary>
+    /// Replicates SPT's ReplaceBotHostility() for zombie event — applies hostility settings
+    /// from seasonalevents.json hostilitySettingsForEvent.zombies to all infected map locations.
+    /// Without this, zombies won't be hostile to players/bots.
+    /// </summary>
+    private void InjectZombieHostility(ZombieConfig config, SeasonalEventConfig seasonalConfig)
+    {
+        if (!seasonalConfig.HostilitySettingsForEvent.TryGetValue("zombies", out var hostilitySettings))
+        {
+            logger.Warning("[ZSlayerZombies] No 'zombies' hostility settings found in seasonalevents.json!");
+            return;
+        }
+
+        // Build whitelist of maps with infection > 0 (lowercase location IDs)
+        var infectedMaps = new HashSet<string>();
+        foreach (var (friendlyName, keys) in InfectionKeys)
+        {
+            if (config.Maps.GetInfection(friendlyName) > 0)
+            {
+                foreach (var key in keys)
+                    infectedMaps.Add(key.ToLowerInvariant());
+            }
+        }
+
+        var locations = databaseService.GetLocations().GetDictionary();
+        var appliedCount = 0;
+
+        foreach (var (_, location) in locations)
+        {
+            if (location?.Base?.BotLocationModifier?.AdditionalHostilitySettings == null) continue;
+
+            var locId = location.Base.Id?.ToLowerInvariant() ?? "";
+
+            // Only apply to maps with zombies
+            if (!infectedMaps.Contains(locId)) continue;
+
+            // Get hostility rules: try location-specific first, then "default"
+            if (!hostilitySettings.TryGetValue(locId, out var rules) &&
+                !hostilitySettings.TryGetValue("default", out rules))
+                continue;
+
+            foreach (var settings in rules)
+            {
+                var existing = location.Base.BotLocationModifier.AdditionalHostilitySettings
+                    .FirstOrDefault(x => x.BotRole == settings.BotRole);
+
+                if (existing == null)
+                {
+                    // Append is IEnumerable — need to convert to list, add, reassign
+                    var list = location.Base.BotLocationModifier.AdditionalHostilitySettings.ToList();
+                    list.Add(settings);
+                    location.Base.BotLocationModifier.AdditionalHostilitySettings = list;
+                    appliedCount++;
+                    continue;
+                }
+
+                // Merge settings into existing entry (same logic as SPT)
+                if (settings.AlwaysEnemies != null) existing.AlwaysEnemies = settings.AlwaysEnemies;
+                if (settings.AlwaysFriends != null) existing.AlwaysFriends = settings.AlwaysFriends;
+                if (settings.BearEnemyChance.HasValue) existing.BearEnemyChance = settings.BearEnemyChance;
+                if (settings.ChancedEnemies != null) existing.ChancedEnemies = settings.ChancedEnemies;
+                if (settings.Neutral != null) existing.Neutral = settings.Neutral;
+                if (settings.SavageEnemyChance.HasValue) existing.SavageEnemyChance = settings.SavageEnemyChance;
+                if (settings.SavagePlayerBehaviour != null) existing.SavagePlayerBehaviour = settings.SavagePlayerBehaviour;
+                if (settings.UsecEnemyChance.HasValue) existing.UsecEnemyChance = settings.UsecEnemyChance;
+                if (settings.UsecPlayerBehaviour != null) existing.UsecPlayerBehaviour = settings.UsecPlayerBehaviour;
+                if (settings.Warn != null) existing.Warn = settings.Warn;
+                appliedCount++;
+            }
+        }
+
+        if (config.Debug)
+            logger.Info($"[ZSlayerZombies] Applied {appliedCount} zombie hostility settings to {infectedMaps.Count} infected map locations");
     }
 
     // ── Step 3: Location Events (crowd attack params) ──
