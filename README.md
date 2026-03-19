@@ -402,4 +402,10 @@ Every step follows the snapshot-and-restore pattern: restore original values fro
 
 ---
 
+## License
+
+[CC BY-NC-SA 4.0](LICENSE) — Built by [ZSlayerHQ / Ben Cole](https://github.com/ZSlayerHQ)
+
+---
+
 *"Set the infection to 100% and disable bosses. Lock the doors. See how long you last."*
