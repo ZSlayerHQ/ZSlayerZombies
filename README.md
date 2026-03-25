@@ -5,9 +5,15 @@
 ![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=flat-square)
 ![Command Center](https://img.shields.io/badge/Command_Center-Optional-green?style=flat-square)
 
+> **⚠️ WORK IN PROGRESS** — This mod is under active development and needs a lot of work. Zombie archetypes, melee system (especially with SAIN), spawn balancing, and wave escalation all need extensive testing. Expect rough edges and bugs. Feedback and bug reports welcome.
+
 The server-side engine behind ZSlayer's zombie overhaul for SPT 4.0 / FIKA. This mod takes control of SPT's seasonal event system and rewires it into a fully configurable zombie apocalypse — per-map infection rates, custom AI tuning, health pools, spawn control, boss zombies, wave escalation, and a live HTTP API for real-time adjustments.
 
 **This is the server mod.** It runs on the SPT server only. For client-side zombie behavior (BigBrain archetypes, horde coordination, custom audio), see the companion plugin: [ZSlayer SPT Zombies (Client)](https://github.com/ZSlayerHQ/ZSlayerZombieClient).
+
+### Recommended Companion Mods
+- **[ABPS (A Bunch of Patches for SPT)](https://hub.sp-tarkov.com/)** — Intended to be used alongside ABPS for the best experience
+- **[ZSlayer Command Center](https://github.com/ZSlayerHQ/ZSlayerCommandCenter)** — Provides a useful web interface with a dedicated zombie configuration section for adjusting all settings in real-time without server restarts
 
 ---
 
