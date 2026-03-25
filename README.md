@@ -12,7 +12,7 @@ The server-side engine behind ZSlayer's zombie overhaul for SPT 4.0 / FIKA. This
 **This is the server mod.** It runs on the SPT server only. For client-side zombie behavior (BigBrain archetypes, horde coordination, custom audio), see the companion plugin: [ZSlayer SPT Zombies (Client)](https://github.com/ZSlayerHQ/ZSlayerZombieClient).
 
 ### Recommended Companion Mods
-- **[ABPS (A Bunch of Patches for SPT)](https://hub.sp-tarkov.com/)** — Intended to be used alongside ABPS for the best experience
+- **[ABPS (Acid's Bot Placement System)](https://hub.sp-tarkov.com/)** — Intended to be used alongside ABPS for the best experience. ZSlayer Zombies auto-detects ABPS and backs off bot cap management to avoid conflicts.
 - **[ZSlayer Command Center](https://github.com/ZSlayerHQ/ZSlayerCommandCenter)** — Provides a useful web interface with a dedicated zombie configuration section for adjusting all settings in real-time without server restarts
 
 ---
