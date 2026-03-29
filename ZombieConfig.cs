@@ -96,6 +96,7 @@ public class MapInfectionConfig
     [JsonPropertyName("Shoreline")] public int Shoreline { get; set; } = 50;
     [JsonPropertyName("Streets")] public int Streets { get; set; } = 50;
     [JsonPropertyName("Woods")] public int Woods { get; set; } = 60;
+    [JsonPropertyName("Labyrinth")] public int Labyrinth { get; set; } = 80;
 
     /// <summary>Get infection % for a friendly map name.</summary>
     public int GetInfection(string friendlyName) => friendlyName switch
@@ -110,6 +111,7 @@ public class MapInfectionConfig
         "Shoreline" => Shoreline,
         "Streets" => Streets,
         "Woods" => Woods,
+        "Labyrinth" => Labyrinth,
         _ => 0
     };
 }
@@ -126,6 +128,7 @@ public class MapBoolConfig
     [JsonPropertyName("Shoreline")] public bool Shoreline { get; set; }
     [JsonPropertyName("Streets")] public bool Streets { get; set; }
     [JsonPropertyName("Woods")] public bool Woods { get; set; }
+    [JsonPropertyName("Labyrinth")] public bool Labyrinth { get; set; }
 }
 
 public class ZombieBehaviourConfig
@@ -337,7 +340,7 @@ public class SpawnControlConfig
     {
         ["Labs"] = 25, ["Customs"] = 30, ["Factory"] = 15, ["Interchange"] = 28,
         ["Lighthouse"] = 27, ["Reserve"] = 27, ["GroundZero"] = 15,
-        ["Shoreline"] = 29, ["Streets"] = 28, ["Woods"] = 27
+        ["Shoreline"] = 29, ["Streets"] = 28, ["Woods"] = 27, ["Labyrinth"] = 20
     };
     [JsonPropertyName("maxBotsPerZone")] public int MaxBotsPerZone { get; set; } = 6;
 

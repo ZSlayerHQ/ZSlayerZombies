@@ -12,7 +12,8 @@
     "GroundZero": 25,
     "Shoreline": 50,
     "Streets": 50,
-    "Woods": 60
+    "Woods": 60,
+    "Labyrinth": 80
   },
 
   "disableBosses": {
@@ -25,7 +26,8 @@
     "GroundZero": false,
     "Shoreline": false,
     "Streets": false,
-    "Woods": false
+    "Woods": false,
+    "Labyrinth": false
   },
 
   "zombieSettings": {
@@ -165,7 +167,7 @@
     "maxBotCap": {
       "Labs": 25, "Customs": 30, "Factory": 15, "Interchange": 28,
       "Lighthouse": 27, "Reserve": 27, "GroundZero": 15,
-      "Shoreline": 29, "Streets": 28, "Woods": 27
+      "Shoreline": 29, "Streets": 28, "Woods": 27, "Labyrinth": 20
     },
     "maxBotsPerZone": 6,
     "ignoreMaxBots": true,

@@ -73,7 +73,8 @@ public class ZombieService(
         ["GroundZero"] = ["Sandbox", "sandbox", "sandbox_high"],
         ["Shoreline"] = ["Shoreline", "shoreline"],
         ["Streets"] = ["TarkovStreets", "tarkovstreets"],
-        ["Woods"] = ["Woods", "woods"]
+        ["Woods"] = ["Woods", "woods"],
+        ["Labyrinth"] = ["labyrinth"]
     };
 
     /// <summary>Friendly name → globals LocationInfection key.</summary>
@@ -88,7 +89,8 @@ public class ZombieService(
         ["GroundZero"] = "Sandbox",
         ["Shoreline"] = "Shoreline",
         ["Streets"] = "TarkovStreets",
-        ["Woods"] = "Woods"
+        ["Woods"] = "Woods",
+        ["Labyrinth"] = "labyrinth"
     };
 
     /// <summary>Friendly name → location folder names for disableBosses/disableWaves arrays.</summary>
@@ -103,7 +105,8 @@ public class ZombieService(
         ["GroundZero"] = ["sandbox", "sandbox_high"],
         ["Shoreline"] = ["shoreline"],
         ["Streets"] = ["tarkovstreets"],
-        ["Woods"] = ["woods"]
+        ["Woods"] = ["woods"],
+        ["Labyrinth"] = ["labyrinth"]
     };
 
     /// <summary>Location folder names that have Halloween2024 events.</summary>
@@ -111,7 +114,8 @@ public class ZombieService(
     [
         "laboratory", "bigmap", "factory4_day", "factory4_night",
         "interchange", "lighthouse", "rezervbase",
-        "sandbox", "sandbox_high", "shoreline", "tarkovstreets", "woods"
+        "sandbox", "sandbox_high", "shoreline", "tarkovstreets", "woods",
+        "labyrinth"
     ];
 
     /// <summary>Map location folder → friendly name for crowd param lookup.</summary>
@@ -128,7 +132,8 @@ public class ZombieService(
         ["sandbox_high"] = "GroundZero",
         ["shoreline"] = "Shoreline",
         ["tarkovstreets"] = "Streets",
-        ["woods"] = "Woods"
+        ["woods"] = "Woods",
+        ["labyrinth"] = "Labyrinth"
     };
 
     // ═══════════════════════════════════════════════════════
